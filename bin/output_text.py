@@ -14,6 +14,8 @@ import re
 import shutil
 import sys
 import tempfile
+from shutil import copyfile
+
 
 try:
     from asciimatics.renderers import ImageFile  # pip install asciimatics
@@ -55,7 +57,6 @@ logger = logging.getLogger(__name__)
 
 # started with code from
 # https://github.com/surekap/MMM-ShairportMetadata/blob/master/shairport-metadata.py
-
 
 def start_item(line):
     regex = r"<item><type>(([A-Fa-f0-9]{2}){4})</type><code>(([A-Fa-f0-9]{2}){4})</code><length>(\d*)</length>"
@@ -115,9 +116,7 @@ def guessImageMime(magic):
         return "image/jpg"
 
 
-# cat /tmp/shairport-sync-metadata | /usr/bin/python3 ./output_text.py
-if __name__ == "__main__":
-
+def main():
     metadata = {}
     fi = sys.stdin
     while True:
@@ -167,9 +166,18 @@ if __name__ == "__main__":
             #elif (code == "clip"):
             #    metadata['IP'] = data
 
+        if (typ == "ssnc" and code == "prgr"):
+            state_changed('play', None)
+        # if (typ == "ssnc" and code == "pffr"):
+        #     notify('play', metadata)
+        # if (typ == "ssnc" and code == "prsm"):
+        #     notify('play', metadata)
+
+
         if (typ == "ssnc" and code == "pfls"):
             metadata = {}
             # print(json.dumps({}))
+            notify('pause', metadata)
             sys.stdout.flush()
         if (typ == "ssnc" and code == "pend"):
             metadata = {}
@@ -205,7 +213,7 @@ if __name__ == "__main__":
                 with temp_file as file:
                     file.write(data)
                     file.close()
-                    print('Wrote album artwork file {}'.format(temp_file.name))
+                    notify_album_artwork(temp_file.name)
                     # logger.info('Wrote file {}'.format(temp_file.name))
                     if asciimatics_avail:
                         # logger.debug('loading image for ascii art')
@@ -217,12 +225,66 @@ if __name__ == "__main__":
         if (typ == "ssnc" and code == "mden"):
             # logger.debug('metadata end')
 
-            print('Album: ' + metadata['songalbum'])
-            print('Artist: ' + metadata['songartist'])
-            print('Title: ' + metadata['itemname'])
             # print(json.dumps(metadata))
+            state_changed('play', metadata)
             sys.stdout.flush()
             metadata = {}
 
-    # this never gets called in current code
-    shutil.rmtree(tempdir)
+    # this never gets called in current code <- original dev comment
+    # actually gets called, workflow: start music on airplay, switch to bluetooth device, whoops
+    if tempdir is not None:
+        shutil.rmtree(tempdir)
+
+
+
+previous_metadata = []
+def state_changed(state, metadata):
+    global previous_metadata
+
+    if metadata is not None:
+        previous_metadata = metadata
+    else:
+        metadata = previous_metadata
+
+    notify(state, metadata)
+
+def notify(state, metadata):
+    if state == 'pause':
+        print('Playback paused')
+    elif state == 'play':
+        print('Playback resumed')
+        track_information = ''
+        if 'songartist' in metadata:
+            # print('Artist: ' + metadata['songartist'])
+            track_information += metadata['songartist']
+        if 'itemname' in metadata:
+            # print('Title: ' + metadata['itemname'])
+            if len(track_information) > 0:
+                track_information += ' - '
+            track_information += metadata['itemname']
+        # if 'songalbum' in metadata:
+        #     l = len(track_information) > 0
+        #     if l:
+        #         track_information += ' ('
+        #     # print('Album: ' + metadata['songalbum'])
+        #     track_information += metadata['songalbum']
+        #     if l:
+        #         track_information += ')'
+        print(track_information)
+
+        f = open('/home/pi/scripts/picture_frame/music/current_track.txt', 'w')
+        f.write(track_information)
+        f.close()
+
+
+def notify_album_artwork(path):
+    # Artwork: {}'.format(temp_file.name)
+    print('Album artwork:', path)
+    copyfile(path, '/home/pi/scripts/picture_frame/music/current_artwork.jpg')
+
+
+
+# cat /tmp/shairport-sync-metadata | /usr/bin/python3 ./output_text.py
+# cat /tmp/shairport-sync-metadata | python3 ~/scripts/github/shairport-sync-metadata-python/bin/output_text.py
+if __name__ == "__main__":
+    main()        
