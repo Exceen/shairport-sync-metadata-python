@@ -14,8 +14,9 @@ import re
 import shutil
 import sys
 import tempfile
-from shutil import copyfile
-
+import time
+from multiprocessing import Process
+import switch_to_music
 
 try:
     from asciimatics.renderers import ImageFile  # pip install asciimatics
@@ -168,16 +169,10 @@ def main():
 
         if (typ == "ssnc" and code == "prgr"):
             state_changed('play', None)
-        # if (typ == "ssnc" and code == "pffr"):
-        #     notify('play', metadata)
-        # if (typ == "ssnc" and code == "prsm"):
-        #     notify('play', metadata)
-
-
         if (typ == "ssnc" and code == "pfls"):
             metadata = {}
             # print(json.dumps({}))
-            notify('pause', metadata)
+            state_changed('pause', None)
             sys.stdout.flush()
         if (typ == "ssnc" and code == "pend"):
             metadata = {}
@@ -238,6 +233,7 @@ def main():
 
 
 previous_metadata = []
+pause_process = []
 def state_changed(state, metadata):
     global previous_metadata
 
@@ -246,43 +242,37 @@ def state_changed(state, metadata):
     else:
         metadata = previous_metadata
 
+    if metadata is not None:
+        if state == 'play':
+            for p in pause_process:
+                if p.is_alive():
+                    p.kill()
+                pause_process.remove(p)
+            notify(state, metadata)
+        elif state == 'pause':
+            process = Process(target=__state_changed_to_pause, args=(state, metadata, ))
+            process.start()
+            pause_process.append(process)
+    else:
+        print('metadata was None!')
+
+def __state_changed_to_pause(state, metadata):
+    time.sleep(3)
     notify(state, metadata)
 
 def notify(state, metadata):
-    if state == 'pause':
-        print('Playback paused')
-    elif state == 'play':
-        print('Playback resumed')
-        track_information = ''
-        if 'songartist' in metadata:
-            # print('Artist: ' + metadata['songartist'])
-            track_information += metadata['songartist']
-        if 'itemname' in metadata:
-            # print('Title: ' + metadata['itemname'])
-            if len(track_information) > 0:
-                track_information += ' - '
-            track_information += metadata['itemname']
-        # if 'songalbum' in metadata:
-        #     l = len(track_information) > 0
-        #     if l:
-        #         track_information += ' ('
-        #     # print('Album: ' + metadata['songalbum'])
-        #     track_information += metadata['songalbum']
-        #     if l:
-        #         track_information += ')'
-        print(track_information)
+    track_information = ''
+    if 'songartist' in metadata:
+        track_information += metadata['songartist']
+    if 'itemname' in metadata:
+        if len(track_information) > 0:
+            track_information += ' - '
+        track_information += metadata['itemname']
 
-        f = open('/home/pi/scripts/picture_frame/music/current_track.txt', 'w')
-        f.write(track_information)
-        f.close()
-
+    switch_to_music.set_track_information(state, track_information)
 
 def notify_album_artwork(path):
-    # Artwork: {}'.format(temp_file.name)
-    print('Album artwork:', path)
-    copyfile(path, '/home/pi/scripts/picture_frame/music/current_artwork.jpg')
-
-
+    switch_to_music.set_album_artwork(path)
 
 # cat /tmp/shairport-sync-metadata | /usr/bin/python3 ./output_text.py
 # cat /tmp/shairport-sync-metadata | python3 ~/scripts/github/shairport-sync-metadata-python/bin/output_text.py
