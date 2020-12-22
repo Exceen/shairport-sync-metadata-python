@@ -19,8 +19,7 @@ try:
     from asciimatics.renderers import ImageFile  # pip install asciimatics
     asciimatics_avail = True
 except ImportError:
-    print(
-        '-W- for asciiart: [sudo] pip[3] install asciimatics', file=sys.stderr)
+    # print('-W- for asciiart: [sudo] pip[3] install asciimatics', file=sys.stderr)
     asciimatics_avail = False
 
 from shairport_sync_metadata import VERSION as shairport_sync_metadata_version
@@ -33,7 +32,7 @@ tempdirname = tempfile.mkdtemp(
 # set up logging to file
 logging_filename = '{}.log'.format(
     os.path.join(tempdirname, os.path.basename(__file__)))
-print('-I- Using log file {}'.format(logging_filename), file=sys.stderr)
+# print('-I- Using log file {}'.format(logging_filename), file=sys.stderr)
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -52,7 +51,7 @@ logging.getLogger('').addHandler(console)
 
 logger = logging.getLogger(__name__)
 
-logger.info('testing')
+# logger.info('testing')
 
 # started with code from
 # https://github.com/surekap/MMM-ShairportMetadata/blob/master/shairport-metadata.py
@@ -100,7 +99,7 @@ def read_data(line, length):
         data = ""
         pass
     except UnicodeDecodeError:
-        print(data)
+        # print(data)
         data = ""
         pass
     return data
@@ -150,7 +149,7 @@ if __name__ == "__main__":
 
             if (code == "asal"):
                 metadata['songalbum'] = data
-                print(data)
+                # print(data)
             elif (code == "asar"):
                 metadata['songartist'] = data
             #elif (code == "ascm"):
@@ -170,19 +169,20 @@ if __name__ == "__main__":
 
         if (typ == "ssnc" and code == "pfls"):
             metadata = {}
-            print(json.dumps({}))
+            # print(json.dumps({}))
             sys.stdout.flush()
         if (typ == "ssnc" and code == "pend"):
             metadata = {}
-            print(json.dumps({}))
+            # print(json.dumps({}))
             sys.stdout.flush()
         if (typ == "ssnc" and code == "PICT"):
             # print(typ, code, length, len(data))
             if (len(data) == 0):
-                print(json.dumps({"image": ""}))
+                # print(json.dumps({"image": ""}))
+                pass
             else:
                 mime = guessImageMime(data)
-                print(mime)
+                # print(mime)
                 if (mime == 'image/png'):
                     temp_file = tempfile.NamedTemporaryFile(
                         prefix="image_",
@@ -205,18 +205,22 @@ if __name__ == "__main__":
                 with temp_file as file:
                     file.write(data)
                     file.close()
-                    logger.info('Wrote file {}'.format(temp_file.name))
+                    print('Wrote album artwork file {}'.format(temp_file.name))
+                    # logger.info('Wrote file {}'.format(temp_file.name))
                     if asciimatics_avail:
-                        logger.debug('loading image for ascii art')
-                        asciimatics_img = ImageFile(
-                            temp_file.name, height=22, colours=16)
-                        print(asciimatics_img)
+                        # logger.debug('loading image for ascii art')
+                        asciimatics_img = ImageFile(temp_file.name, height=22, colours=16)
+                        # print(asciimatics_img)
 
             sys.stdout.flush()
 
         if (typ == "ssnc" and code == "mden"):
-            logger.debug('metadata end')
-            print(json.dumps(metadata))
+            # logger.debug('metadata end')
+
+            print('Album: ' + metadata['songalbum'])
+            print('Artist: ' + metadata['songartist'])
+            print('Title: ' + metadata['itemname'])
+            # print(json.dumps(metadata))
             sys.stdout.flush()
             metadata = {}
 
