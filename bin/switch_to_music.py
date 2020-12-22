@@ -12,7 +12,7 @@ from multiprocessing import Process
 # check what happens when there is no album artwork set
 # what to do when artwork loading takes too long?
 
-base_path = '/home/pi/scripts/picture_frame/music/'
+base_path = '/home/pi/scripts/github/media_frame/data/music/'
 
 wait_for_artwork_process = []
 
