@@ -43,7 +43,7 @@ def set_track_information(state, track_information):
 def set_default_artwork():
     global wait_for_artwork_process
 
-    time.sleep(2)
+    time.sleep(5)
     remove_old_artworks()
     copyfile(base_path + 'default.jpg', base_path + 'artwork/default.jpg')
     frame_next('no artwork')
@@ -54,6 +54,7 @@ def set_album_artwork(path):
     for p in wait_for_artwork_process:
         if p.is_alive():
             p.kill()
+            print('killed no artwork process')
         wait_for_artwork_process.remove(p)
 
     pic_dir = base_path + 'artwork/'
