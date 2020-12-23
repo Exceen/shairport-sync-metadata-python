@@ -33,12 +33,19 @@ def set_track_information(state, track_information):
         f.write(track_information)
         f.close()
 
+        # if os.path.isfile(base_path + 'is_active'):
         process = Process(target=set_default_artwork, args=( ))
         process.start()
         wait_for_artwork_process.append(process)
 
     if state == 'pause':
-        frame_next('track pause')
+        # frame_next('track pause')
+
+        print('paused')
+        print('starting new PictureFrame for photos')
+        kill_wait_for_artwork_process()
+        os.system('/home/pi/scripts/github/media_frame/scripts/change_media_to_photos.sh')
+
 
 def set_default_artwork():
     global wait_for_artwork_process
@@ -49,21 +56,24 @@ def set_default_artwork():
     frame_next('no artwork')
 
 def set_album_artwork(path):
-    global wait_for_artwork_process
 
+    pic_dir = base_path + 'artwork/'
+    newArtworkPath = os.path.join(pic_dir, os.path.basename(path))
+    copyfile(path, newArtworkPath)
+    remove_old_artworks(newArtworkPath)
+    kill_wait_for_artwork_process()
+    frame_next('artwork')
+
+####################################
+
+def kill_wait_for_artwork_process():
+    global wait_for_artwork_process
     for p in wait_for_artwork_process:
         if p.is_alive():
             p.kill()
             print('killed no artwork process')
         wait_for_artwork_process.remove(p)
 
-    pic_dir = base_path + 'artwork/'
-    newArtworkPath = os.path.join(pic_dir, os.path.basename(path))
-    copyfile(path, newArtworkPath)
-    remove_old_artworks(newArtworkPath)
-    frame_next('artwork')
-
-####################################
 
 def remove_old_artworks(exceptFile = None):
     pic_dir = base_path + 'artwork/'
@@ -77,11 +87,18 @@ def remove_old_artworks(exceptFile = None):
         os.remove(path)
 
 def frame_next(info = ''):
-    client = mqtt.Client()
-    client.connect("localhost", 1883, 60)
-    client.publish("frame/next")
-    client.disconnect()
-    print('frame/next ' + info)
+
+    if os.path.isfile(base_path + 'is_active'):
+        client = mqtt.Client()
+        client.connect("localhost", 1883, 60)
+        client.publish("frame/next")
+        client.disconnect()
+        print('frame/next ' + info)
+    else:
+        print('frame/next ' + info)
+        kill_wait_for_artwork_process()
+        print('starting new PictureFrame for music')
+        os.system('/home/pi/scripts/github/media_frame/scripts/change_media_to_music.sh')
 
 #   client.username_pw_set(config.MQTT_LOGIN, config.MQTT_PASSWORD)
 #   client.subscribe("frame/date_from", qos=0) # needs payload as 2019:06:01 or divided by ":", "/", "-" or "."
