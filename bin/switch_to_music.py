@@ -33,7 +33,6 @@ def set_track_information(state, track_information):
         f.write(track_information)
         f.close()
 
-        # if os.path.isfile(base_path + 'is_active'):
         process = Process(target=set_default_artwork, args=( ))
         process.start()
         wait_for_artwork_process.append(process)
@@ -56,11 +55,11 @@ def set_default_artwork():
     frame_next('no artwork')
 
 def set_album_artwork(path):
-
     pic_dir = base_path + 'artwork/'
-    newArtworkPath = os.path.join(pic_dir, os.path.basename(path))
-    copyfile(path, newArtworkPath)
-    remove_old_artworks(newArtworkPath)
+    new_artwork_path = os.path.join(pic_dir, os.path.basename(path))
+    copyfile(path, new_artwork_path)
+    os.remove(path)
+    remove_old_artworks(new_artwork_path)
     kill_wait_for_artwork_process()
     frame_next('artwork')
 
@@ -87,7 +86,6 @@ def remove_old_artworks(exceptFile = None):
         os.remove(path)
 
 def frame_next(info = ''):
-
     if os.path.isfile(base_path + 'is_active'):
         client = mqtt.Client()
         client.connect("localhost", 1883, 60)

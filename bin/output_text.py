@@ -227,8 +227,9 @@ def main():
 
     # this never gets called in current code <- original dev comment
     # actually gets called, workflow: start music on airplay, switch to bluetooth device, whoops
-    if tempdir is not None:
-        shutil.rmtree(tempdir)
+    # tempdir is not defined
+    # if tempdir is not None:
+        # shutil.rmtree(tempdir)
 
 
 
