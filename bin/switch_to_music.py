@@ -6,11 +6,9 @@ from datetime import date
 from datetime import timedelta
 from shutil import copyfile
 from multiprocessing import Process
-
-# possible problems:
-# skipping multiple songs in a short time
-# check what happens when there is no album artwork set
-# what to do when artwork loading takes too long?
+import urllib.request
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
 base_path = '/home/pi/scripts/github/media_frame/data/music/'
 
@@ -33,7 +31,7 @@ def set_track_information(state, track_information):
         f.write(track_information)
         f.close()
 
-        process = Process(target=set_default_artwork, args=( ))
+        process = Process(target=set_default_artwork, args=(track_information, ))
         process.start()
         wait_for_artwork_process.append(process)
 
@@ -46,13 +44,20 @@ def set_track_information(state, track_information):
         os.system('/home/pi/scripts/github/media_frame/scripts/change_media_to_photos.sh')
 
 
-def set_default_artwork():
-    global wait_for_artwork_process
-
+def set_default_artwork(track_information):
     time.sleep(5)
-    remove_old_artworks()
-    copyfile(base_path + 'default.jpg', base_path + 'artwork/default.jpg')
-    frame_next('no artwork')
+
+    artwork_url = get_artwork_url(track_information)
+    if artwork_url != None:
+        artwork_filename = artwork_url.split('/')[-1] + '.jpeg'
+        new_artwork_path = base_path + 'artwork/' + artwork_filename
+        remove_old_artworks()
+        urllib.request.urlretrieve(artwork_url, new_artwork_path)
+        frame_next('spotify artwork')
+    else:
+        remove_old_artworks()
+        copyfile(base_path + 'default.jpg', base_path + 'artwork/default.jpg')
+        frame_next('default artwork')
 
 def set_album_artwork(path):
     pic_dir = base_path + 'artwork/'
@@ -97,6 +102,40 @@ def frame_next(info = ''):
         kill_wait_for_artwork_process()
         print('starting new PictureFrame for music')
         os.system('/home/pi/scripts/github/media_frame/scripts/change_media_to_music.sh')
+
+def get_artwork_url(track_information):
+    ti_split = track_information.split(' - ')
+    if len(ti_split) == 2:
+        search_artist = ti_split[0]
+        search_title = ti_split[1]
+
+        sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id='14e48d315bb649dba1a37ce4c764f58c', client_secret='ba72e489deb8442b90263689df69f8fb'))
+        result = sp.search(search_artist + ' ' + search_title)
+        rresult = result['tracks']['items']
+        for r in rresult:
+            if r['name'] == search_title and get_artists(r['artists']) == search_artist:
+                biggest_size_index = -1
+    
+                images = r['album']['images']
+                biggest_size = -1
+                for i in range(0, len(images)):
+                    image = images[i]
+                    if image['height'] > biggest_size:
+                        biggest_size = int(image['height'])
+                        biggest_size_index = i
+
+                if biggest_size_index != -1:
+                    return images[biggest_size_index]['url']
+    return None
+      
+def get_artists(artists):
+    artist = ''
+    for i in range(0, len(artists)):
+        artist += artists[i]['name']
+        if i != len(artists) - 1:
+            artists += ', '
+
+    return artist
 
 #   client.username_pw_set(config.MQTT_LOGIN, config.MQTT_PASSWORD)
 #   client.subscribe("frame/date_from", qos=0) # needs payload as 2019:06:01 or divided by ":", "/", "-" or "."
